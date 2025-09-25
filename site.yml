@@ -1,0 +1,110 @@
+- name: Configure bastion with PAM OAuth2 device flow (Ubuntu 22.04)
+  hosts: bastion
+  become: true
+  gather_facts: true
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: ssh
+        state: restarted
+
+  tasks:
+    - name: Install build and runtime dependencies
+      apt:
+        name: "{{ pam_build_deps }}"
+        state: present
+        update_cache: true
+
+    - name: Clone pam_oauth2_device repo
+      git:
+        repo: "{{ pam_module_repo }}"
+        dest: "{{ pam_module_dest }}"
+        version: "main"
+        force: true
+
+    - name: Build pam_oauth2_device
+      make:
+        chdir: "{{ pam_module_dest }}"
+
+    - name: Ensure security module dir exists
+      file:
+        path: "{{ pam_module_so | dirname }}"
+        state: directory
+        mode: "0755"
+
+    - name: Install pam_oauth2_device.so
+      copy:
+        src: "{{ pam_module_dest }}/pam_oauth2_device.so"
+        dest: "{{ pam_module_so }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create PAM config directory
+      file:
+        path: "{{ pam_config_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Render /etc/pam_oauth2_device/config.json
+      template:
+        src: "pam_config.json.j2"
+        dest: "{{ pam_config_path }}"
+        owner: root
+        group: root
+        mode: "0640"
+      notify: restart sshd
+
+    - name: Ensure PAM line for sshd is present (non disruptive)
+      lineinfile:
+        path: "{{ pam_sshd_file }}"
+        insertafter: "^[#]?@include common-auth"
+        line: "{{ insert_pam_line }}"
+        state: present
+        create: false
+        backup: yes
+      notify: restart sshd
+
+    - name: Ensure KbdInteractiveAuthentication yes in sshd_config
+      lineinfile:
+        path: "{{ sshd_config_file }}"
+        regexp: '^KbdInteractiveAuthentication\s+'
+        line: 'KbdInteractiveAuthentication yes'
+        state: present
+        backup: yes
+      notify: restart sshd
+
+    - name: Ensure ChallengeResponseAuthentication yes in sshd_config
+      lineinfile:
+        path: "{{ sshd_config_file }}"
+        regexp: '^ChallengeResponseAuthentication\s+'
+        line: 'ChallengeResponseAuthentication yes'
+        state: present
+        backup: yes
+      notify: restart sshd
+
+    - name: Ensure UsePAM yes in sshd_config
+      lineinfile:
+        path: "{{ sshd_config_file }}"
+        regexp: '^UsePAM\s+'
+        line: 'UsePAM yes'
+        state: present
+        backup: yes
+      notify: restart sshd
+
+    - name: Ensure 'im' user exists
+      user:
+        name: "{{ jump_user }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Authorize SSH key for 'im'
+      authorized_key:
+        user: "{{ jump_user }}"
+        state: present
+        key: "{{ jump_user_pubkey }}"
+

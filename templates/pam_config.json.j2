@@ -1,0 +1,33 @@
+{
+  "oauth": {
+    "client": {
+      "id": "{{ client_id }}",
+      "secret": "{{ client_secret }}"
+    },
+    "scope": "openid profile",
+    "device_endpoint": "{{ oidc_providers[idp_provider].device_endpoint }}",
+    "token_endpoint": "{{ oidc_providers[idp_provider].token_endpoint }}",
+    "userinfo_endpoint": "{{ oidc_providers[idp_provider].userinfo_endpoint }}",
+    "username_attribute": "{{ username_attribute }}",
+    "groups": [{% if allowed_groups %}{% for g in allowed_groups %}"{{ g }}"{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}]
+  },
+
+  "enable_email": {{ "true" if enable_email else "false" }},
+  "send_mail": {
+    "smtp_server_url": "{{ smtp.smtp_server_url }}",
+    "smtp_username": "{{ smtp.smtp_username }}",
+    "smtp_password": "{{ smtp.smtp_password | default('', true) }}",
+    "smtp_insecure": "{{ smtp.smtp_insecure }}",
+    "smtp_ca_path": "{{ smtp.smtp_ca_path }}",
+    "from_address": "{{ smtp.from_address }}",
+    "from_username": "{{ smtp.from_username }}",
+    "cc_address": "{{ smtp.cc_address }}"
+  },
+
+  "qr": {
+    "error_correction_level": {{ qr_error_correction_level }}
+  },
+
+  "debug": {{ "true" if pam_debug else "false" }}
+}
+
