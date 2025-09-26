@@ -2,6 +2,13 @@
   hosts: bastion
   become: true
   gather_facts: true
+  vars_files:
+      - group_vars/bastion.vault.yml
+  vars:
+    # Fallback to 'master' if your repo doesn't have 'main'
+    pam_module_branch: "{{ pam_module_branch | default('master') }}"
+    # Build a unique list of local users to create: preferred_username + extras
+    oidc_local_users: "{{ [preferred_username] + (extra_local_users | default([])) | unique }}"
 
   handlers:
     - name: restart sshd
@@ -10,22 +17,43 @@
         state: restarted
 
   tasks:
+    # Build/runtime deps needed to compile the PAM module
     - name: Install build and runtime dependencies
       apt:
         name: "{{ pam_build_deps }}"
         state: present
         update_cache: true
 
+    - name: Ensure OIDC/local users exist with valid shells
+      user:
+        name: "{{ item }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+      loop: "{{ oidc_local_users }}"
+
+    - name: Ensure pam_mkhomedir in common-session (create home on first login)
+      lineinfile:
+        path: /etc/pam.d/common-session
+        regexp: '^session\s+required\s+pam_mkhomedir\.so'
+        line: 'session required pam_mkhomedir.so skel=/etc/skel umask=0077'
+        state: present
+
+    # Fetch your fork
     - name: Clone pam_oauth2_device repo
       git:
         repo: "{{ pam_module_repo }}"
         dest: "{{ pam_module_dest }}"
-        version: "main"
+        version: "master"
         force: true
+        update: true
 
+    # Compile the module (idempotent thanks to 'creates')
     - name: Build pam_oauth2_device
-      make:
+      command: make
+      args:
         chdir: "{{ pam_module_dest }}"
+        creates: "{{ pam_module_dest }}/pam_oauth2_device.so"
 
     - name: Ensure security module dir exists
       file:
@@ -33,6 +61,7 @@
         state: directory
         mode: "0755"
 
+    # IMPORTANT: copy from remote build dir -> system PAM dir
     - name: Install pam_oauth2_device.so
       copy:
         src: "{{ pam_module_dest }}/pam_oauth2_device.so"
@@ -40,6 +69,8 @@
         owner: root
         group: root
         mode: "0644"
+        remote_src: yes
+      notify: restart sshd
 
     - name: Create PAM config directory
       file:
@@ -58,13 +89,20 @@
         mode: "0640"
       notify: restart sshd
 
-    - name: Ensure PAM line for sshd is present (non disruptive)
+    - name: Ensure pam_oauth2_device line is before common-auth and marked sufficient
+      blockinfile:
+        path: "{{ pam_sshd_file }}"            
+        marker: "# {mark} OIDC PAM"
+        insertbefore: '^[#]?\s*@include\s+common-auth'
+        block: |
+          auth    sufficient  pam_oauth2_device.so /etc/pam_oauth2_device/config.json
+      notify: restart sshd
+
+    - name: Remove @include common-auth from sshd PAM auth stack
       lineinfile:
         path: "{{ pam_sshd_file }}"
-        insertafter: "^[#]?@include common-auth"
-        line: "{{ insert_pam_line }}"
-        state: present
-        create: false
+        regexp: '^[#]?\s*@include\s+common-auth\s*$'
+        state: absent
         backup: yes
       notify: restart sshd
 
@@ -95,6 +133,7 @@
         backup: yes
       notify: restart sshd
 
+    # Jump user used by IM/terraform etc.
     - name: Ensure 'im' user exists
       user:
         name: "{{ jump_user }}"

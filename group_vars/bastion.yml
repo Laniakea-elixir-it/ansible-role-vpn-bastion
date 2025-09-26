@@ -27,7 +27,6 @@ oidc_providers:
 # Public OIDC client fields (OK to keep outside Vault).
 # client_secret must go in bastion.vault.yml
 # -------------------------
-client_id: "04182174-f334-4cc9-9e41-3753d5dec229"
 username_attribute: "preferred_username"
 
 # Optional group-based access control. Empty list disables the check.
@@ -87,6 +86,4 @@ insert_pam_line: 'auth required pam_oauth2_device.so /etc/pam_oauth2_device/conf
 # Create a technical "jump" user for automation (IM) and install a public key
 # -------------------------
 jump_user: "im"
-jump_user_pubkey: >-
-  ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDJHEZdEoTi081resAZrSa7P2lGf4PWQbXIkVz8ITNUFal1alX/SiHCXBoqmuNdiXd+URFKfFe/Oz87h9N+VHTsTHU8VEomemHtXBLwTzUUVyz1Ez8TzNAGVGQxxlzCmIkh+vxrAMhb7rpZnNXPnPSGMmODUwKQc1GrKAVkQTVjQSB7Hu2FTbb4H8/HjZnE7XLIPRpxlG1ytABNJwDYpDrhKqwFzedFQXlBPPqKsbS4E8oh/8m/hUtSoninA3RI8bPjidS1DDeU3nEvyi6yUD+QzF3yNQtvKVxCTzh0vNvpwTEJEFWjjATRPhVJcdGe72TlFcGl44mlNTbY+zAp6F+JzyTBcqzJjArwJmYOhDie+7ZPcpNsJyoY96g2f4qa5TRCLOoGegllzK+A9FSKhcUUPfTN1jWDhoO60tHNOB1H89rRaYEYYisZTRzXuZmo0MDaK3MiEhMbaBnF+4MAYNQwIr7LsdzOLZWECnMJqjOYMxu8gmeEYcBOqOInMYRwCVfNIpRfzZ4gWITnCwdNk4F8zOxdmvrgtQa61z8LqjxG5e29nbcDER3+Qe+JyiaQ2fqQGck3VvnVTB96t7XK3stDUMnBg9s7oWtgExXVnUElww38M+4aEXvPaPKkfnct+juvcUP9jPwrMabVTE+nIPkXCMT/k90nP2bngsizkwFQmQ== usegalaxy_it
 
