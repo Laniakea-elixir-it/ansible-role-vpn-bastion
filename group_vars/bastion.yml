@@ -59,7 +59,7 @@ pam_debug: true
 # -------------------------
 # Source/build/install locations for the PAM module
 # -------------------------
-pam_module_repo: "https://github.com/LuigiMansi1/pam_oauth2_device.git"
+pam_module_repo: "https://github.com/Laniakea-elixir-it/pam_oauth2_device"
 pam_module_dest: "/opt/pam_oauth2_device"
 pam_module_so: "/usr/lib/x86_64-linux-gnu/security/pam_oauth2_device.so"
 pam_config_dir: "/etc/pam_oauth2_device"
